@@ -1,4 +1,5 @@
 server = HttpServer.new()
+Script = ""
 
 server:post("/add_bot", function(request, response)
     local growID = request:getParam("growID")
