@@ -1,0 +1,646 @@
+server = HttpServer.new()
+ScriptJS = Config
+
+server:post("/add_bot", function(request, response)
+    local growID = request:getParam("growID")
+    local passID = request:getParam("passID")
+    local MacID = request:getParam("MacID")
+    local RidID = request:getParam("RidID")
+
+    if growID then
+        if passID then
+            addBot(growID, passID)
+        elseif MacID and RidID then
+            addBot(growID, MacID, RidID)
+        else
+            addBot(growID)
+        end
+
+        local alertScriptAdd = "<script> window.location.href = '/';</script>"
+        response:setContent(alertScriptAdd, "text/html")
+    else
+        local alertScriptAdd = "<script>alert('Parameter growID tidak ditemukan'); window.location.href = '/';</script>"
+        response:setContent(alertScriptAdd, "text/html")
+    end
+end)
+
+
+server:post("/remove_bot", function(request, response)
+    local growID = request:getParam("growID")
+    if growID then
+        removeBot(growID)
+        local alertScriptremove = "Bot "..growID.." Berhasil Di Hapus\nEmazet Store"
+        response:setContent(alertScriptremove, "text/html")
+    else
+        local alertScriptremove = "<script>alert('Parameter growID tidak ditemukan'); window.location.href = '/';</script>"
+        response:setContent(alertScriptremove, "text/html")
+    end
+end)
+
+server:post("/connect_bot", function(request, response)
+    local growID = request:getParam("growID")
+    if growID then
+        getBot(growID):connect()
+        local alertScriptConnect = "Bot "..growID.." Berhasil Connect\nEmazet Store"
+        response:setContent(alertScriptConnect, "text/html")
+    else
+        local alertScriptConnect = "<script>alert('Parameter growID tidak ditemukan'); window.location.href = '/';</script>"
+        response:setContent(alertScriptConnect, "text/html")
+    end
+end)
+
+server:post("/disconnect_bot", function(request, response)
+    local growID = request:getParam("growID")
+    if growID then
+        getBot(growID):disconnect()
+        local alertScriptConnect = "Bot "..growID.." Berhasil Connect\nEmazet Store"
+        response:setContent(alertScriptConnect, "text/html")
+    else
+        local alertScriptConnect = "<script>alert('Parameter growID tidak ditemukan'); window.location.href = '/';</script>"
+        response:setContent(alertScriptConnect, "text/html")
+    end
+end)
+
+server:post("/misc_action", function(request, response)
+    local growID = request:getParam("growID")
+    local actionType = request:getParam("actionType")
+    local text = request:getParam("text")
+    local itemtodrop = tonumber(text)
+    local Number = tonumber(text)
+    function mysplit (inputstr, sep)
+        if sep == nil then
+                sep = "%s"
+        end
+        local t={}
+        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+                table.insert(t, str)
+        end
+        return t
+    end
+
+    if growID and actionType then
+        if actionType == "warp" then
+            local warpParams = mysplit(text, ":")
+            local worldName = warpParams[1] or "EXIT"
+            local worldID = warpParams[2]
+
+            if worldID then
+                getBot(growID):warp(worldName, worldID)
+            else
+                getBot(growID):warp(worldName)
+            end
+
+            local alertScriptWarp = "Bot " .. growID .. " Berhasil Warp ke " .. text .. "\nEmazet Store"
+            response:setContent(alertScriptWarp, "text/html")
+        elseif actionType == "say" then
+            getBot(growID):say(text or "Text") -- Use "DefaultText" if no text provided
+            local alertScriptSay = "Bot " .. growID .. " Berhasil Say: " .. (text or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptSay, "text/html")
+        elseif actionType == "drop" then
+            local inventory = getBot(growID):getInventory()
+            local inventory_item = inventory:getItem(itemtodrop)
+            getBot(growID):drop(itemtodrop,inventory_item.count)
+            local alertScriptDrop = "Bot " .. growID .. " Berhasil Drop : " .. (text or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptDrop, "text/html")
+        elseif actionType == "moveUp" then
+            getBot(growID):moveUp(Number)
+            local alertScriptSay = "Bot " .. growID .. " Berhasil Move Up : " .. (Number or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptMoveUp, "text/html")
+        elseif actionType == "moveDown" then
+            getBot(growID):moveDown(Number)
+            local alertScriptSay = "Bot " .. growID .. " Berhasil Move Down : " .. (Number or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptMoveUp, "text/html")
+        elseif actionType == "moveRight" then
+            getBot(growID):moveRight(Number)
+            local alertScriptSay = "Bot " .. growID .. " Berhasil Move Right : " .. (Number or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptMoveUp, "text/html")
+        elseif actionType == "moveLeft" then
+            getBot(growID):moveLeft(Number)
+            local alertScriptSay = "Bot " .. growID .. " Berhasil Move Left : " .. (Number or "DefaultText") .. "\nEmazet Store"
+            response:setContent(alertScriptMoveUp, "text/html")
+        else
+            response:setContent("<script>alert('Invalid actionType'); window.location.href = '/';</script>", "text/html")
+        end
+    else
+        response:setContent("<script>alert('Parameter growID atau actionType tidak ditemukan'); window.location.href = '/';</script>", "text/html")
+    end
+end)
+
+server:post("/auto_farm", function(request, response)
+    local growID = request:getParam("growID")
+    local autoFarm = getBot(growID).auto_farm
+
+    if autoFarm then
+        if autoFarm.enabled then
+            autoFarm.enabled = false
+            getBot(growID).auto_collect = false
+            for i = 0,4  do
+                autoFarm:setActive(i, false) -- Enabling first 5 tiles.
+            end
+            local alertScriptAutoFarm = "Auto Farm stopped\nEmazet Store"
+            response:setContent(alertScriptAutoFarm, "text/html")
+        else
+            autoFarm.enabled = true
+            autoFarm.auto_place = request:getParam("autoPlace") == "true"
+            autoFarm.auto_break = request:getParam("autoBreak") == "true"
+            autoFarm.id = tonumber(request:getParam("farmID")) or 4584
+            autoFarm.speed = tonumber(request:getParam("farmSpeed")) or 100
+            tileValues = request:getParam("breakTile") or 1,3
+            local values = {}
+            for value in string.gmatch(tileValues, "[^,]+") do
+                table.insert(values, tonumber(value))
+            end
+            firstTile = values[1] or 1
+            secondTile = values[2] or 3
+
+            for i = firstTile,secondTile  do
+                autoFarm:setActive(i, true) -- Enabling first 5 tiles.
+            end
+
+            local alertScriptAutoFarm = "Auto Farm started\nEmazet Store"
+            response:setContent(alertScriptAutoFarm, "text/html")
+        end
+    else
+        local alertScriptAutoFarm = "<script>alert('Auto Farm not available for this bot'); window.location.href = '/';</script>"
+        response:setContent(alertScriptAutoFarm, "text/html")
+    end
+end)
+
+server:post("/auto_spam", function(request, response)
+    local growID = request:getParam("growID")
+    local autoSpam = getBot(growID).auto_spam
+
+    if autoSpam then
+        if autoSpam.enabled then
+            autoSpam.enabled = false
+            local alertScriptAutoSpam = "Auto Spam stopped\nEmazet Store"
+            response:setContent(alertScriptAutoSpam, "text/html")
+        else
+            autoSpam.enabled = true
+            autoSpam.interval = tonumber(request:getParam("spamInterval")) or 5
+            autoSpam.random_interval = request:getParam("randomInterval") == "true"
+            autoSpam.show_emote = request:getParam("showEmote") == "true"
+            autoSpam:setText(0, request:getParam("spamText") or "This is a text message")
+
+            local alertScriptAutoSpam = "Auto Spam started\nEmazet Store"
+            response:setContent(alertScriptAutoSpam, "text/html")
+        end
+    else
+        local alertScriptAutoSpam = "<script>alert('Auto Spam not available for this bot'); window.location.href = '/';</script>"
+        response:setContent(alertScriptAutoSpam, "text/html")
+    end
+end)
+
+server:get("/get_bot_backpack", function(request, response)
+    local growID = request:getParam("growID")
+    local bot = getBot(growID)
+    
+    if bot then
+        local backpackItems = ""
+        local botBackpack = bot:getInventory()
+
+        for i, item in pairs(botBackpack:getItems()) do
+            local itemName = getInfo(item.id).name
+            local itemId = getInfo(item.id).id
+            local inventory_item = botBackpack:getItem(itemId)
+            backpackItems = backpackItems .. itemName .. " (" .. inventory_item.count .. ")\n"
+        end
+
+        response:setContent(backpackItems, "text/plain")
+    else
+        response:setContent("Bot not found", "text/plain")
+    end
+end)
+
+server:get("/get_bot_captcha", function(request, response)
+    local growID = request:getParam("growID")
+    local bot = getBot(growID)
+    
+    if bot then
+        local infoCaptcha = ""
+        local linkCaptcha = bot:getCaptcha()
+
+        infoCaptcha = linkCaptcha
+
+        response:setContent(infoCaptcha, "text/plain")
+    else
+        response:setContent("Bot not found", "text/plain")
+    end
+end)
+
+server:post("/create_id", function(request, response)
+    local growID = request:getParam("growID")
+    local createGrowID = request:getParam("createGrowID")
+    local createPassword = request:getParam("createPassword")
+    local createEmail = request:getParam("createEmail")
+
+    if createGrowID and createPassword and createEmail then
+        local bot = getBot(growID)
+        getBot(growID):runScript()
+            getBot(growID):sendPacket(2, "action|growid")
+            sleep(1000)
+            getBot(growID):sendPacket(2, "action|dialog_return\ndialog_name|growid_apply\nlogon|" .. createGrowID .. "\npassword|" .. createPassword .. "\npassword_verify|" .. createPassword .. "\nemail|" .. createEmail)
+            sleep(5000)
+            getBot(growID):sendPacket(2, "action|growid")
+            sleep(1000)
+            getBot(growID):sendPacket(2, "action|dialog_return\ndialog_name|growid_apply\nlogon|" .. createGrowID .. "\npassword|" .. createPassword .. "\npassword_verify|" .. createPassword .. "\nemail|" .. createEmail)
+            sleep(15000)
+            getBot(growID):connect()
+            getBot(growID).auto_reconnect = false
+            local alertScriptCreateID = "ID successfully Created For " .. createGrowID .."|" .. createPassword .. "|" .. createEmail 
+            response:setContent(alertScriptCreateID, "text/html")
+    else
+        local alertScriptCreateID = "<script>alert('Please provide the required information'); window.location.href = '/';</script>"
+        response:setContent(alertScriptCreateID, "text/html")
+    end
+end)
+
+server:get("/get_bot_information", function(request, response)
+    local growID = request:getParam("growID")
+    local bot = getBot(growID)
+    
+    if bot then
+        local infoBot = ""
+        local botLevel = bot.level
+        local botGems = bot.gem_count
+        local botPing = bot:getPing()
+
+        infoBot = "Level : " .. botLevel .."\nGems : " .. botGems .. "\nPing : " .. botPing
+
+        response:setContent(infoBot, "text/plain")
+    else
+        response:setContent("Bot not found", "text/plain")
+    end
+end)
+
+server:post("/run_script", function(request, response)
+    local growID = request:getParam("growID")
+    local scriptContent = request:getParam("content")
+
+    if growID and scriptContent then
+
+        getBot(growID):runScript(scriptContent)
+        local alertScriptRun = "Script Successfully Executed For Bot " .. growID
+        response:setContent(alertScriptRun, "text/html")
+    else
+
+        local alertScriptRun = "<script>alert('Invalid parameters'); window.location.href = '/';</script>"
+        response:setContent(alertScriptRun, "text/html")
+    end
+end)
+
+server:post("/stop_script", function(request, response)
+    local growID = request:getParam("growID")
+    local scriptContent = request:getParam("content")
+    if growID and scriptContent then
+        -- Run the script using the provided content
+        getBot(growID):stopScript()
+        local alertScriptRun = "Script Successfully Stoped For Bot " .. growID
+        response:setContent(alertScriptRun, "text/html")
+    else
+        local alertScriptRun = "<script>alert('Invalid parameters'); window.location.href = '/';</script>"
+        response:setContent(alertScriptRun, "text/html")
+    end
+end)
+
+
+server:get("/", function(request, response)
+    local username = getUsername() or "Guest"
+    local html = [[
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Zufar Panel Multibot</title>
+            <style>
+            body {
+                background-color: #f0f0f0; /* Set your desired background color */
+                border: 2px solid #ccc; /* Set your desired border styles */
+                border-radius: 15px; /* Set border radius for rounded corners */
+                margin: 20px; /* Adjust margin for spacing */
+                padding: 20px; /* Adjust padding for spacing */
+            }
+            .header {
+                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px;
+                background-color: #333;
+                color: white;
+                border-radius: 5px;
+            }
+            .header h1 {
+                font-size: 1.5em; /* Adjust the font size as needed */
+                animation: moveHeader 5s infinite alternate;
+            }
+    
+            /* Keyframes for the header animation */
+            @keyframes moveHeader {
+                from {
+                    transform: translateX(0);
+                }
+                to {
+                    transform: translateX(50px); /* Adjust the distance as needed */
+                }
+            }
+            .welcome-text {
+                position: absolute;
+                color: white;
+                padding: 8px 16px;
+                top: 33px;
+                right: 30px;
+                border-radius: 5px;
+                border: none;
+                background-color: #2ecc71;
+            }
+            .docs-link {
+                position: absolute;
+                color: white;
+                padding: 8px 16px;
+                top: 33px;
+                right: 200px;
+                border-radius: 5px;
+                border: none;
+                cursor: pointer;
+                background-color: #a19b66;
+            }
+            .add-container {
+                display: flex;
+                justify-content: space-between;
+                margin: 10px;
+            }
+
+            .add-bot-container,
+            .remove-button,
+            .connect-button,
+            .misc-button,
+            .addbots-button,
+            .auto-farm-button,
+            .backpack-button,
+            .purple-button,
+            .red-button,
+            .green-button,
+            .misc-cancle-button {
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                cursor: pointer;
+                border-radius: 5px; /* Add rounded corners */
+                margin-right: 5px; /* Add a small margin between buttons */
+            }
+            .purple-button {
+                background-color: #8e44ad; /* Purple color */
+            }
+            .green-button {
+                background-color: #2ecc71; /* Purple color */
+            }
+            .red-button {
+                background-color: #e74c3c; /* Purple color */
+            }
+            .addbots-button{
+                background-color: #2ecc71; /* Green color */
+            }
+            .remove-button {
+                background-color: #e74c3c; /* Red color */
+            }
+            .backpack-button {
+                background-color: #adadf7
+            }
+            .auto-button {
+                background-color: #bae1ff;
+            }
+            .connect-button {
+                background-color: #2ecc71; /* Green color */
+            }
+            
+            .misc-button {
+                background-color: #8e44ad; /* Purple color */
+            }
+            .bot-table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+
+            .bot-table th, .bot-table td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: center;
+            }
+
+            .bot-table th {
+                background-color: #f2f2f2;
+            }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Zufar Panel Multibot</h1>
+                <a class="docs-link" href="https://www.youtube.com" target="_blank">Documentation</a>
+                <div class="welcome-text">Welcome ]] .. username .. [[</div>
+            </div>
+            <!-- Container untuk Add Bot dan Add Proxy -->
+                    <h2>Add Bot</h2>
+                    <form method="post" action="/add_bot">
+                        <label for="growID">Grow ID :</label>
+                        <input type="text" id="growID" name="growID" placeholder="Required">
+                        <br>
+                        <br>
+                        <label for="passID">Password :</label>
+                        <input type="text" id="passID" name="passID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <label for="MacID">Mac :</label>
+                        <input type="text" id="MacID" name="MacID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <label for="RidID">Rid :</label>
+                        <input type="text" id="RidID" name="RidID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <button class="addbots-button" type="submit">Add</button>
+                    </form>
+                    <h2>Add Proxy</h2>
+                    <form method="post" action="/add_bot">
+                        <label for="growID">Grow ID :</label>
+                        <input type="text" id="growID" name="growID" placeholder="Required">
+                        <br>
+                        <br>
+                        <label for="passID">Password :</label>
+                        <input type="text" id="passID" name="passID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <label for="MacID">Mac :</label>
+                        <input type="text" id="MacID" name="MacID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <label for="RidID">Rid :</label>
+                        <input type="text" id="RidID" name="RidID" placeholder="Optional">
+                        <br>
+                        <br>
+                        <button class="addbots-button" type="submit">Add</button>
+                    </form>
+
+                <!-- Bot List Box -->
+                    <h2>Bot List</h2>
+                    <table class="bot-table">
+                        <tr>
+                            <th>No</th>
+                            <th>Bot ID</th>
+                            <th>Bot Status</th>
+                            <th>Bot World</th>
+                            <th>Actions</th>
+                        </tr>
+    ]]
+
+    local bots = getBots()
+    for i, bot in ipairs(bots) do
+        local botName = bot.name
+        local botStatus = bot.status
+        local botWorld = bot:getWorld().name
+
+        html = html .. string.format([[
+            <tr>
+                <td>%d</td>
+                <td class="growID" id="botName">%s</td>
+                <td id="botStatus">%s</td>
+                <td id="botWorld">%s</td>
+                <td>
+                    <button class="remove-button" onclick="removeBot(this)">Remove</button>
+                    <button class="connect-button" onclick="connect(this)">Connect</button>
+                    <button class="remove-button" onclick="disconnect(this)">Disconnect</button>
+                    
+                    <div class="misc-input-container" style="margin-top: 10px; margin-bottom: 10px;">
+                        <label for="actionTypeSelect">Misc :</label>
+                        <select id="actionTypeSelect" class="action-select">
+                            <option value="warp">Warp</option>
+                            <option value="say">Say</option>
+                            <option value="drop">Drop</option>
+                            <option value="moveUp">Move Up</option>
+                            <option value="moveDown">Move Down</option>
+                            <option value="moveRight">Move Right</option>
+                            <option value="moveLeft">Move Left</option>
+                        </select>
+                        <label for="miscTextInput">Value :</label>
+                        <input type="text" id="miscTextInput" placeholder="Enter Value">
+                        <button class="misc-button" onclick="performMiscAction()">Execute</button>
+                    </div>
+                    <button class="auto-button" onclick="showScriptExecutor()">Executor</button>
+                    <button class="auto-button" onclick="showBotBackpack(this)">Backpack</button>
+                    <button class="auto-button" onclick="showBotInformation(this)">Information</button>
+                    <!-- <button class="auto-button" onclick="captchaGuest(this)">Captcha</button> -->
+                    <button class="auto-button" onclick="CID(this)">Create ID</button>
+                    <button class="auto-button" onclick="showAutoFarmConfig()">Auto Farm</button>
+                    <button class="auto-button" onclick="showAutoSpamConfig()">Auto Spam</button>
+                    <!-- Auto Farm Configuration -->
+                    <div id="autoFarmConfig" style="display: none;">
+                        <h3>Auto Farm Configuration</h3>
+                        <label for="autoPlace">Auto Place:</label>
+                        <input type="checkbox" id="autoPlace" checked>
+                        <br>
+                        <label for="autoBreak">Auto Break:</label>
+                        <input type="checkbox" id="autoBreak" checked>
+                        <br>
+                        <label for="farmID">Block ID :</label>
+                        <input type="text" id="farmID" value="0">
+                        <br>
+                        <label for="farmSpeed">Farm Speed:</label>
+                        <input type="text" id="farmSpeed" value="100">
+                        <br>
+                        <label for="breakTile">Tile :</label>
+                        <input type="text" id="breakTile" value="1,3">
+                        <br>
+                        <button class="toggle-farm-button" onclick="toggleAutoFarm()">Start</button>
+                        <button class="toggle-farm-button" onclick="toggleAutoFarm()">Stop</button>
+                        <button class="toggle-farm-button" onclick="cancelAutoFarm()">Cancel</button>
+                    </div>
+
+                    <!-- Auto Spam Configuration -->
+                    <div id="autoSpamConfig" style="display: none;">
+                        <h3>Auto Spam Configuration</h3>
+                        <label for="spamInterval">Spam Interval (seconds):</label>
+                        <input type="text" id="spamInterval" value="5">
+                        <br>
+                        <label for="randomInterval">Random Interval:</label>
+                        <input type="checkbox" id="randomInterval" checked>
+                        <br>
+                        <label for="showEmote">Show Emote:</label>
+                        <input type="checkbox" id="showEmote" checked>
+                        <br>
+                        <label for="spamText">Spam Text:</label>
+                        <input type="text" id="spamText" placeholder="Enter Spam Text">
+                        <br>
+                        <button class="toggle-spam-button" onclick="toggleAutoSpam()">Start</button>
+                        <button class="toggle-spam-button" onclick="toggleAutoSpam()">Stop</button>
+                        <button class="toggle-spam-button" onclick="cancelAutoSpam()">Cancel</button>
+                    </div>
+                    <!-- Executor Configuration -->
+                    <div id="scriptExecutorBox" style="display: none;">
+                        <h3>Script Executor</h3>
+                        <form id="scriptExecutorForm">
+                            <textarea id="scriptTextarea" name="scriptTextarea" placeholder="Enter your script here"></textarea>
+                            <br>
+                            <br>
+                            <button class="purple-button" onclick="executeScript()">Execute</button>
+                            <button class="addbots-button" onclick="stopScript()">Stop</button>
+                            <button class="remove-button" onclick="cancelScript()">Cancel</button>
+                        </form>
+                    </div>
+                    <div id="createID" style="display: none;">
+                    <h3>Create ID</h3>
+                    <form id="createIdSubForm">
+                        <label for="createGrowID">Grow ID:</label>
+                        <input type="text" id="createGrowID" name="createGrowID" placeholder="Required">
+                        <br>
+                        <br>
+                        <label for="createPassword">Password:</label>
+                        <input type="text" id="createPassword" name="createPassword" placeholder="Optional">
+                        <br>
+                        <br>
+                        <label for="createEmail">Email:</label>
+                        <input type="text" id="createEmail" name="createEmail" placeholder="Required">
+                        <br>
+                        <br>
+                        <button class="addbots-button" onclick="createID()">Create</button>
+                        <button class="remove-button" onclick="cancelCreateID()">Cancel</button>
+                    </form>
+                </div>
+                </td>
+            </tr>
+        ]], i, botName, botStatus, botWorld)
+    end
+
+    html = html .. [[
+                    </table>
+                </div>
+            </form>
+                <script src="https://raw.githubusercontent.com/Calestica17/Calesticas/main/config.js"></script>
+        </body>
+        </html>
+    ]]
+
+    response:setContent(html, "text/html")
+end)
+
+
+server:get("/get_bot_name", function(request, response)
+    local bots = getBots()
+    i = 1
+
+    if #bots == 0 or bots[i].name == "None" then
+        response:setContent("None", "text/plain")
+    else
+        local botName = bots[i].name
+        local botStatus = bots[i].status
+        local botWorld = bots[i]:getWorld().name
+        local botPositionX = bots[i].x
+        local botPositionY = bots[i].y
+        local Posisi = botPositionX, botPositionY
+        
+        response:setContent(botName .. "|" .. botStatus .. "|".. botWorld.." ("..botPositionX..","..botPositionY..")", "text/plain")
+    end
+end)
+
+
+server:listen(Server_IP, Port)
