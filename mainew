@@ -614,7 +614,7 @@ server:get("/", function(request, response)
                     </table>
                 </div>
             </form>
-                <script src="Js"></script>
+                <script src="https://raw.githubusercontent.com/Calestica17/Calesticas/main/Js"></script>
         </body>
         </html>
     ]]
